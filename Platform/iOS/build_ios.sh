@@ -38,7 +38,10 @@ IPHONE_SDK_VERSION=$1
 POCO=$2
 POCO_VERSION=$3
 iPhoneARCH=armv7
+iPhoneARCH2=armv7s
+iPhoneARCH64=arm64
 SIMULATOR_ARCH=i686
+SIMULATOR_ARCH64=x86_64
 
 ARM_DEV_DIR=$PLATFORMS/iPhoneOS.platform/Developer/usr/bin/
 SIM_DEV_DIR=$PLATFORMS/iPhoneSimulator.platform/Developer/usr/bin/
@@ -70,7 +73,10 @@ CURRENT_DIR=${PWD}
 FRAMEWORKDIR=$2/iOS/framework
 
 PATH_TO_LIBS_i386=$3
-PATH_TO_LIBS_ARM7=$4
+PATH_TO_LIBS_x8664=$4
+PATH_TO_LIBS_ARM7=$5
+PATH_TO_LIBS_ARM7s=$6
+PATH_TO_LIBS_ARM64=$7
 
 FRAMEWORK_BUNDLE=$FRAMEWORKDIR/$FRAMEWORK_NAME.framework
 
@@ -100,6 +106,8 @@ echo "Decomposing $file for iPhoneSimulator..."
 #mkdir -p $PATH_TO_LIBS_i386/obj
 mkdir -p $PATH_TO_LIBS_i386/${file}
 (cd $PATH_TO_LIBS_i386/$file; $SIM_DEV_DIR/ar -x ../libPoco$file.a );
+mkdir -p $PATH_TO_LIBS_x8664/${file}
+(cd $PATH_TO_LIBS_x8664/$file; $SIM_DEV_DIR/ar -x ../libPoco$file.a );
 done
 
 for file in {Foundation$DEBUG,Util$DEBUG,XML$DEBUG,Net$DEBUG,NetSSL$DEBUG,Crypto$DEBUG,Data$DEBUG,DataSQLite$DEBUG}
@@ -108,21 +116,31 @@ echo "Decomposing $file for iPhoneOS..."
 #mkdir -p $PATH_TO_LIBS_ARM7/obj
 mkdir -p $PATH_TO_LIBS_ARM7/${file}
 (cd $PATH_TO_LIBS_ARM7/$file; $ARM_DEV_DIR/ar -x ../libPoco$file.a );
+mkdir -p $PATH_TO_LIBS_ARM7s/${file}
+(cd $PATH_TO_LIBS_ARM7s/$file; $ARM_DEV_DIR/ar -x ../libPoco$file.a );
+mkdir -p $PATH_TO_LIBS_ARM64/${file}
+(cd $PATH_TO_LIBS_ARM64/$file; $ARM_DEV_DIR/ar -x ../libPoco$file.a );
 done
 doneSection
 
 witeMessage "Linking each architecture into a libPoco${DEBUG}.a"
 echo "Linking objects for iPhoneSimulator..."
 (cd $PATH_TO_LIBS_i386; $SIM_DEV_DIR/ar crus libPoco${DEBUG}.a Foundation$DEBUG/*.o Util$DEBUG/*.o XML$DEBUG/*.o Net$DEBUG/*.o NetSSL$DEBUG/*.o Crypto$DEBUG/*.o Data$DEBUG/*.o DataSQLite$DEBUG/*.o );
+(cd $PATH_TO_LIBS_x8664; $SIM_DEV_DIR/ar crus libPoco${DEBUG}.a Foundation$DEBUG/*.o Util$DEBUG/*.o XML$DEBUG/*.o Net$DEBUG/*.o NetSSL$DEBUG/*.o Crypto$DEBUG/*.o Data$DEBUG/*.o DataSQLite$DEBUG/*.o );
 echo "Linking objects for iPhoneOS..."
 (cd $PATH_TO_LIBS_ARM7; $SIM_DEV_DIR/ar crus libPoco${DEBUG}.a Foundation$DEBUG/*.o Util$DEBUG/*.o XML$DEBUG/*.o Net$DEBUG/*.o NetSSL$DEBUG/*.o Crypto$DEBUG/*.o Data$DEBUG/*.o DataSQLite$DEBUG/*.o );
+(cd $PATH_TO_LIBS_ARM7s; $SIM_DEV_DIR/ar crus libPoco${DEBUG}.a Foundation$DEBUG/*.o Util$DEBUG/*.o XML$DEBUG/*.o Net$DEBUG/*.o NetSSL$DEBUG/*.o Crypto$DEBUG/*.o Data$DEBUG/*.o DataSQLite$DEBUG/*.o );
+(cd $PATH_TO_LIBS_ARM64; $SIM_DEV_DIR/ar crus libPoco${DEBUG}.a Foundation$DEBUG/*.o Util$DEBUG/*.o XML$DEBUG/*.o Net$DEBUG/*.o NetSSL$DEBUG/*.o Crypto$DEBUG/*.o Data$DEBUG/*.o DataSQLite$DEBUG/*.o );
 doneSection
 
 for file in {Foundation$DEBUG,Util$DEBUG,XML$DEBUG,Net$DEBUG,NetSSL$DEBUG,Crypto$DEBUG,Data$DEBUG,DataSQLite$DEBUG}
 do
 echo "Cleaning $file..."
 rm -rf $PATH_TO_LIBS_i386/${file}
+rm -rf $PATH_TO_LIBS_x8664/${file}
 rm -rf $PATH_TO_LIBS_ARM7/${file}
+rm -rf $PATH_TO_LIBS_ARM7s/${file}
+rm -rf $PATH_TO_LIBS_ARM64/${file}
 done
 
 cd $CURRENT_DIR
@@ -132,7 +150,10 @@ FRAMEWORK_INSTALL_NAME=$FRAMEWORK_BUNDLE/Versions/$FRAMEWORK_VERSION/$FRAMEWORK_
 xcrun -sdk iphoneos lipo \
 -create \
 -arch i386 "$PATH_TO_LIBS_i386/libPoco${DEBUG}.a" \
+-arch x86_64 "$PATH_TO_LIBS_x8664/libPoco${DEBUG}.a" \
 -arch armv7 "$PATH_TO_LIBS_ARM7/libPoco${DEBUG}.a" \
+-arch armv7s "$PATH_TO_LIBS_ARM7s/libPoco${DEBUG}.a" \
+-arch arm64 "$PATH_TO_LIBS_ARM64/libPoco${DEBUG}.a" \
 -o "$FRAMEWORK_INSTALL_NAME" \
 || abort "Lipo $1 failed"
 
@@ -173,6 +194,7 @@ doneSection
 #Execution starts here
 cd $POCO
 
+# i686
 ./configure \
 --config=iPhoneSimulator-clang-libc++ \
 --static \
@@ -180,8 +202,19 @@ cd $POCO
 --no-samples \
 --omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip
 
-make -j32
+make -j4
 
+# x86_64
+./configure \
+--config=iPhoneSimulator-clang-libc++ \
+--static \
+--no-tests \
+--no-samples \
+--omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip
+
+make POCO_TARGET_OSARCH=x86_64 -j4
+
+# arm7
 ./configure \
 --config=iPhone-clang-libc++ \
 --static \
@@ -189,6 +222,27 @@ make -j32
 --no-samples \
 --omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip
 
-make -j32
+make -j4
 
-buildFramework 'RELEASE' ${PWD}/lib `pwd`/lib/iPhoneSimulator/$SIMULATOR_ARCH `pwd`/lib/iPhoneOS/$iPhoneARCH
+# arm64
+./configure \
+--config=iPhone-clang-libc++ \
+--static \
+--no-tests \
+--no-samples \
+--omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip
+
+make POCO_TARGET_OSARCH=arm64 -j4
+
+# armv7s
+./configure \
+--config=iPhone-clang-libc++ \
+--static \
+--no-tests \
+--no-samples \
+--omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip
+
+make POCO_TARGET_OSARCH=armv7s -j4
+
+
+buildFramework 'RELEASE' ${PWD}/lib `pwd`/lib/iPhoneSimulator/$SIMULATOR_ARCH `pwd`/lib/iPhoneSimulator/SIMULATOR_ARCH64 `pwd`/lib/iPhoneOS/$iPhoneARCH  `pwd`/lib/iPhoneOS/$iPhoneARCH2  `pwd`/lib/iPhoneOS/$iPhoneARCH64
