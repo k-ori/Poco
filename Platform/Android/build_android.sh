@@ -36,8 +36,9 @@ echo
 
 POCO=$1
 POCO_VERSION=$2
-ABI=armeabi
-
+ABI1=armeabi
+ABI2=armeabi-v7a
+ABI3=x86
 
 #Execution starts here
 cd $POCO
@@ -49,7 +50,25 @@ cd $POCO
 --no-samples \
 --omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip,XML
 
-make -j32 ANDROID_ABI=$ABI
+make -j4 ANDROID_ABI=$ABI2
+
+./configure \
+--config=Android \
+--static \
+--no-tests \
+--no-samples \
+--omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip,XML
+
+make -j4 ANDROID_ABI=$ABI1
+
+./configure \
+--config=Android \
+--static \
+--no-tests \
+--no-samples \
+--omit=CppUnit,CppParser,CodeGeneration,PageCompiler,Remoting,Data/MySQL,Data/ODBC,Zip,XML
+
+make -j4 ANDROID_ABI=$ABI3
 
 HOME_DIR=${PWD}
 
@@ -59,16 +78,16 @@ for file in {Foundation$DEBUG,Util$DEBUG,XML$DEBUG,Net$DEBUG,NetSSL$DEBUG,Crypto
 do
 echo "Framework: Decomposing $file..."
 mkdir -p lib/Android/$ABI/${file}
-(cd lib/Android/$ABI/${file}; arm-linux-androideabi-ar -x ../libPoco$file.a );
+(cd lib/Android/$ABI1/${file}; arm-linux-androideabi-ar -x ../libPoco$file.a );
 done
 cd $HOME_DIR;
 echo "Framework: Archiving objects into libPoco${DEBUG}.a"
-(cd lib/Android/$ABI; arm-linux-androideabi-ar crus libPoco${DEBUG}.a Foundation$DEBUG/*.o Util$DEBUG/*.o XML$DEBUG/*.o Net$DEBUG/*.o NetSSL$DEBUG/*.o Crypto$DEBUG/*.o Data$DEBUG/*.o DataSQLite$DEBUG/*.o );
+(cd lib/Android/$ABI1; arm-linux-androideabi-ar crus libPoco${DEBUG}.a Foundation$DEBUG/*.o Util$DEBUG/*.o XML$DEBUG/*.o Net$DEBUG/*.o NetSSL$DEBUG/*.o Crypto$DEBUG/*.o Data$DEBUG/*.o DataSQLite$DEBUG/*.o );
 cd $HOME_DIR;
 for file in {Foundation$DEBUG,Util$DEBUG,XML$DEBUG,Net$DEBUG,NetSSL$DEBUG,Crypto$DEBUG,Data$DEBUG,DataSQLite$DEBUG}
 do
 echo "Framework: Cleaning $file..."
-rm -rf lib/Android/$ABI/${file}
+rm -rf lib/Android/$ABI1/${file}
 done
 doneSection
 
